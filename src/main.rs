@@ -1,9 +1,11 @@
 use clap::Parser;
 use git2::{Repository, Signature};
+use stringlit::s;
 
 #[derive(Parser)]
 struct Cli {
-    tag: String,
+    #[arg(value_names = ["REMOTE?", "TAG"], num_args = 1..=2)]
+    args: Vec<String>,
 }
 
 use git2::ObjectType;
@@ -40,11 +42,16 @@ fn re_tag(repo: &Repository, tag: &str, new_target_spec: &str) -> anyhow::Result
 }
 
 fn main() -> anyhow::Result<()> {
-    let Cli { tag } = Cli::parse();
+    let Cli { args } = Cli::parse();
+    let (remote, tag) = if args.len() == 1 {
+        (s!("origin"), args[0].to_owned())
+    } else {
+        (args[0].to_owned(), args[1].to_owned())
+    };
     let repo = Repository::discover(".")?;
     re_tag(&repo, &tag, "HEAD")?;
     eprintln!("Tag successfully recreated");
     eprintln!("If the previous tag was already pushed, you need to run the following:");
-    println!("git push --delete origin {tag}; git push origin {tag}");
+    println!("git push --delete {remote} {tag}; git push {remote} {tag}");
     Ok(())
 }
