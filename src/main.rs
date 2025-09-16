@@ -1,4 +1,3 @@
-use anyhow::bail;
 use clap::Parser;
 use git2::{Repository, Signature};
 
@@ -12,28 +11,30 @@ use git2::ObjectType;
 fn re_tag(repo: &Repository, tag: &str, new_target_spec: &str) -> anyhow::Result<()> {
     let refname = format!("refs/tags/{tag}");
 
-    // Find the existing tag ref
     let obj = repo.revparse_single(&refname)?;
 
-    // If it's an annotated tag object, copy its tagger + message.
-    // Otherwise (lightweight), synthesize metadata.
-    let (tagger, message) = if obj.kind() == Some(ObjectType::Tag) {
-        let tag = repo.find_tag(obj.id())?.clone();
-        let sig = tag
+    let meta = if obj.kind() == Some(ObjectType::Tag) {
+        let tag_obj = repo.find_tag(obj.id())?.clone();
+        let sig = tag_obj
             .tagger()
             .or_else(|| repo.signature().ok())
             .unwrap_or(Signature::now("unknown", "unknown@example.com")?)
             .to_owned();
-        let msg = tag.message().unwrap_or("").to_string();
-        (sig, msg)
+        let msg = tag_obj.message().unwrap_or("").to_string();
+        Some((sig, msg))
     } else {
-        bail!("Tag not found!")
+        None
     };
 
     let _ = repo.tag_delete(tag);
 
     let target = repo.revparse_single(new_target_spec)?;
-    repo.tag(tag, &target, &tagger, &message, false)?;
+
+    if let Some((tagger, message)) = meta {
+        repo.tag(tag, &target, &tagger, &message, false)?;
+    } else {
+        repo.tag_lightweight(tag, &target, false)?;
+    }
 
     Ok(())
 }
