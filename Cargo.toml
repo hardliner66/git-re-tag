@@ -2,6 +2,9 @@
 name = "git-re-tag"
 version = "1.0.0"
 edition = "2024"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/hardliner66/git-re-tag"
 
 [dependencies]
 anyhow = "1.0.99"
